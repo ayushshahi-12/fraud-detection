@@ -1,0 +1,30 @@
+# One-click deploy on Render: New -> Blueprint -> pick this repo.
+# Free-plan rules change, so check Render's pricing page if a plan is rejected.
+databases:
+  - name: fraud-db
+    plan: free
+
+services:
+  - type: web
+    name: fraud-backend
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fraud-db
+          property: connectionString
+
+  - type: web
+    name: fraud-frontend
+    runtime: docker
+    rootDir: frontend
+    plan: free
+    envVars:
+      - key: API_URL
+        fromService:
+          type: web
+          name: fraud-backend
+          property: hostport
