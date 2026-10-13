@@ -28,6 +28,8 @@ app.include_router(predict.router)
 app.include_router(dashboard.router)
 
 
-@app.get("/health", tags=["system"])
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["system"])  # HEAD lets uptime monitors ping it
 def health_check():
     return {"status": "ok"}
+
+  
