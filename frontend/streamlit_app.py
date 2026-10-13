@@ -4,20 +4,43 @@ System. Talks to the FastAPI backend only via HTTP — it holds no model or
 DB logic of its own, matching the architecture in the project PPT.
 """
 import os
+import time
 
 import pandas as pd
 import requests
 import streamlit as st
 
-API_URL = os.getenv("API_URL", "http://localhost:8000").rstrip("/")
+API_URL = os.getenv("API_URL", "https://fraud-backend-riva.onrender.com").rstrip("/")
 if not API_URL.startswith(("http://", "https://")):
     API_URL = "http://" + API_URL  # e.g. Render private-network "host:port"
 
-st.set_page_config(page_title="Fraud Detection Dashboard", layout="wide", page_icon="🛡️")
+st.set_page_config(page_title="SecurePay", layout="wide", page_icon="🛡️")
 
 RISK_COLORS = {"LOW": "#22C55E", "MEDIUM": "#F59E0B", "HIGH": "#EF4444"}
 
-st.title("🛡️ AI-Powered Financial Fraud Detection & Risk Scoring")
+st.title("🛡️ SecurePay")
+st.caption("AI-Powered Financial Fraud Detection & Risk Scoring")
+
+
+def wake_backend(max_wait: int = 90) -> bool:
+    """Free hosting puts the backend to sleep when idle. Ping /health until it
+    answers, so nobody has to open the backend link by hand first."""
+    deadline = time.time() + max_wait
+    while time.time() < deadline:
+        try:
+            if requests.get(f"{API_URL}/health", timeout=10).ok:
+                return True
+        except requests.RequestException:
+            pass
+        time.sleep(3)
+    return False
+
+
+if not st.session_state.get("backend_ready"):
+    with st.spinner("Waking up the secure server... this can take up to a minute the first time."):
+        st.session_state["backend_ready"] = wake_backend()
+    if not st.session_state["backend_ready"]:
+        st.warning("The server is still starting. Please wait a minute and refresh the page.")
 
 tab_check, tab_dashboard = st.tabs(["🔍 Check Transaction", "📊 Monitoring Dashboard"])
 
@@ -48,7 +71,7 @@ with tab_check:
                 "oldbalanceDest": old_dest, "newbalanceDest": new_dest,
             }
             try:
-                resp = requests.post(f"{API_URL}/predict", json=payload, timeout=10)
+                resp = requests.post(f"{API_URL}/predict", json=payload, timeout=30)
                 resp.raise_for_status()
                 result = resp.json()
 
@@ -93,7 +116,7 @@ with tab_dashboard:
         st.rerun()
 
     try:
-        stats = requests.get(f"{API_URL}/stats", timeout=10).json()
+        stats = requests.get(f"{API_URL}/stats", timeout=30).json()
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Transactions", f"{stats['total_transactions']:,}")
