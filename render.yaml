@@ -24,7 +24,4 @@ services:
     plan: free
     envVars:
       - key: API_URL
-        fromService:
-          type: web
-          name: fraud-backend
-          property: hostport
+        value: https://fraud-backend-riva.onrender.com
